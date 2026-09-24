@@ -1,5 +1,0 @@
-package fileparser
-
-import (
-	"fmt"
-)
