@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from dag import Node, DAG
 
 app = FastAPI()
 
