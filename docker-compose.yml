@@ -1,0 +1,8 @@
+services:
+  floci-az:
+    image: floci/floci-az:latest
+    ports:
+      - "4557:4577"
+    environment:
+        FLOCI_AZ_STORAGE_MODE: hybrid # survives restarts, use `memory` in CI
+#
