@@ -103,7 +103,6 @@
 		bind:edges
 		{nodeTypes}
 		{colorMode}
-		fitView
 		onpanecontextmenu={onPaneContextMenu}
 		onpaneclick={onPaneClick}
 	>
