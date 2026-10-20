@@ -11,7 +11,7 @@
 	} from '@xyflow/svelte';
 	import '@xyflow/svelte/dist/style.css';
 
-	import { NODE_CATALOG, type FlowNodeType } from './nodeCatalog';
+	import { NODE_CATALOG, type NodeCatalogItem } from './nodeCatalog';
 	import { nodeTypes } from './nodes';
 
 	type Props = {
@@ -55,17 +55,17 @@
 		closeMenu();
 	}
 
-	function addNode(type: FlowNodeType) {
+	function addNode(item: NodeCatalogItem) {
 		if (!menu) return;
-
-		const item = NODE_CATALOG.find((entry) => entry.type === type);
-		if (!item) return;
 
 		const newNode: Node = {
 			id: crypto.randomUUID(),
-			type,
+			type: item.type,
 			position: menu.flow,
-			data: { label: item.label }
+			data:
+				item.type === 'process'
+					? { label: item.label, fn: item.fn ?? 'mean', mapOp: 'multiply', operand: 1 }
+					: { label: item.label }
 		};
 
 		nodes = [...nodes, newNode];
@@ -122,12 +122,12 @@
 			<p class="px-3 py-1.5 text-[10px] font-medium tracking-wide text-[#8e8e8e] uppercase">
 				Add node
 			</p>
-			{#each NODE_CATALOG as item (item.type)}
+			{#each NODE_CATALOG as item (`${item.type}:${item.fn ?? item.label}`)}
 				<button
 					type="button"
 					role="menuitem"
 					class="flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left transition-colors hover:bg-white/8"
-					onclick={() => addNode(item.type)}
+					onclick={() => addNode(item)}
 				>
 					<span class="text-sm text-[#ececec]">{item.label}</span>
 					<span class="text-xs text-[#8e8e8e]">{item.description}</span>
