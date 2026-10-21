@@ -1,6 +1,6 @@
 import { PROCESS_FUNCTIONS, type ProcessFunctionId } from './processFunctions';
 
-export type FlowNodeType = 'input' | 'process' | 'output';
+export type FlowNodeType = 'input' | 'process' | 'output' | 'train';
 
 export type NodeCatalogItem = {
 	type: FlowNodeType;
@@ -21,6 +21,11 @@ export const NODE_CATALOG: NodeCatalogItem[] = [
 		label: item.label,
 		description: item.description
 	})),
+	{
+		type: 'train',
+		label: 'Train',
+		description: 'Fit a local linear model'
+	},
 	{
 		type: 'output',
 		label: 'Output',
