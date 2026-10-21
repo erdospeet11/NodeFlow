@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "status": "ok",
+  "results": [
+    { "nodeId": "numbers", "status": "ok", "value": [1, 2, 3, 4] },
+    { "nodeId": "average", "status": "ok", "value": 2.5 },
+    { "nodeId": "result", "status": "ok", "value": 2.5 }
+  ]
+}

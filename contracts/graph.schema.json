@@ -1,0 +1,285 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:nodeflow:graph:v1",
+  "title": "NodeFlow graph contract v1",
+  "$comment": "Executable graph shared by the Svelte editor and the FastAPI runner. Canvas position and selection are editor state and are not part of this contract.",
+  "oneOf": [{ "$ref": "#/$defs/runRequest" }, { "$ref": "#/$defs/runResult" }],
+  "$defs": {
+    "runRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "nodes", "edges"],
+      "properties": {
+        "version": { "const": 1 },
+        "nodes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/node" }
+        },
+        "edges": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/edge" }
+        }
+      }
+    },
+    "runResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "status", "results"],
+      "properties": {
+        "version": { "const": 1 },
+        "status": { "enum": ["ok", "error"] },
+        "results": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/nodeResult" }
+        }
+      }
+    },
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "config", "ports"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "type": { "enum": ["input", "process", "output", "train"] },
+        "config": true,
+        "ports": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/port" }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "type": { "const": "input" } },
+            "required": ["type"]
+          },
+          "then": {
+            "properties": {
+              "config": { "$ref": "#/$defs/inputConfig" },
+              "ports": { "$ref": "#/$defs/outPorts" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "type": { "const": "process" } },
+            "required": ["type"]
+          },
+          "then": {
+            "properties": {
+              "config": { "$ref": "#/$defs/processConfig" },
+              "ports": { "$ref": "#/$defs/processPorts" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "type": { "const": "output" } },
+            "required": ["type"]
+          },
+          "then": {
+            "properties": {
+              "config": { "$ref": "#/$defs/outputConfig" },
+              "ports": { "$ref": "#/$defs/inPorts" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "type": { "const": "train" } },
+            "required": ["type"]
+          },
+          "then": {
+            "properties": {
+              "config": { "$ref": "#/$defs/trainConfig" },
+              "ports": { "$ref": "#/$defs/processPorts" }
+            }
+          }
+        }
+      ]
+    },
+    "port": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "direction"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "direction": { "enum": ["in", "out"] }
+      }
+    },
+    "outPorts": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": {
+        "properties": { "direction": { "const": "out" } },
+        "required": ["direction"]
+      }
+    },
+    "inPorts": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": {
+        "properties": { "direction": { "const": "in" } },
+        "required": ["direction"]
+      }
+    },
+    "processPorts": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "allOf": [
+        {
+          "contains": {
+            "properties": { "direction": { "const": "in" } },
+            "required": ["direction"]
+          }
+        },
+        {
+          "contains": {
+            "properties": { "direction": { "const": "out" } },
+            "required": ["direction"]
+          }
+        }
+      ]
+    },
+    "inputConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["values"],
+      "properties": {
+        "values": {
+          "type": "array",
+          "items": { "type": "number" }
+        }
+      }
+    },
+    "processConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fn"],
+      "properties": {
+        "fn": { "enum": ["sum", "mean", "min", "max", "map"] },
+        "mapOp": { "enum": ["multiply", "add", "square"] },
+        "operand": { "type": "number" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "fn": { "enum": ["sum", "mean", "min", "max"] } },
+            "required": ["fn"]
+          },
+          "then": {
+            "not": {
+              "anyOf": [{ "required": ["mapOp"] }, { "required": ["operand"] }]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "fn": { "const": "map" } },
+            "required": ["fn"]
+          },
+          "then": { "required": ["mapOp"] }
+        },
+        {
+          "if": {
+            "properties": { "mapOp": { "enum": ["multiply", "add"] } },
+            "required": ["mapOp"]
+          },
+          "then": { "required": ["operand"] }
+        },
+        {
+          "if": {
+            "properties": { "mapOp": { "const": "square" } },
+            "required": ["mapOp"]
+          },
+          "then": { "not": { "required": ["operand"] } }
+        }
+      ]
+    },
+    "outputConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {}
+    },
+    "trainConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["userId", "path"],
+      "properties": {
+        "userId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$" },
+        "path": { "type": "string", "minLength": 1 },
+        "data": { "$ref": "#/$defs/trainData" }
+      }
+    },
+    "trainData": {
+      "oneOf": [
+        { "type": "array", "items": { "type": "number" }, "minItems": 1 },
+        {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "items": { "type": "number" }
+          }
+        }
+      ]
+    },
+    "edge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "source", "target"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "source": { "$ref": "#/$defs/endpoint" },
+        "target": { "$ref": "#/$defs/endpoint" }
+      }
+    },
+    "endpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["nodeId", "port"],
+      "properties": {
+        "nodeId": { "$ref": "#/$defs/id" },
+        "port": { "$ref": "#/$defs/id" }
+      }
+    },
+    "nodeResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["nodeId", "status"],
+      "properties": {
+        "nodeId": { "$ref": "#/$defs/id" },
+        "status": { "enum": ["ok", "error"] },
+        "value": {
+          "oneOf": [
+            { "type": "number" },
+            { "type": "array", "items": { "type": "number" } },
+            { "type": "string", "minLength": 1 }
+          ]
+        },
+        "error": { "type": "string", "minLength": 1 }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "status": { "const": "ok" } },
+            "required": ["status"]
+          },
+          "then": { "required": ["value"], "not": { "required": ["error"] } }
+        },
+        {
+          "if": {
+            "properties": { "status": { "const": "error" } },
+            "required": ["status"]
+          },
+          "then": { "required": ["error"], "not": { "required": ["value"] } }
+        }
+      ]
+    },
+    "id": { "type": "string", "minLength": 1 }
+  }
+}

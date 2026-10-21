@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "nodes": [
+    {
+      "id": "numbers",
+      "type": "input",
+      "config": { "values": [1, 2, 3, 4] },
+      "ports": [{ "id": "out", "direction": "out" }]
+    },
+    {
+      "id": "average",
+      "type": "process",
+      "config": { "fn": "mean" },
+      "ports": [
+        { "id": "in", "direction": "in" },
+        { "id": "out", "direction": "out" }
+      ]
+    },
+    {
+      "id": "result",
+      "type": "output",
+      "config": {},
+      "ports": [{ "id": "in", "direction": "in" }]
+    }
+  ],
+  "edges": [
+    {
+      "id": "numbers-to-average",
+      "source": { "nodeId": "numbers", "port": "out" },
+      "target": { "nodeId": "average", "port": "in" }
+    },
+    {
+      "id": "average-to-result",
+      "source": { "nodeId": "average", "port": "out" },
+      "target": { "nodeId": "result", "port": "in" }
+    }
+  ]
+}
