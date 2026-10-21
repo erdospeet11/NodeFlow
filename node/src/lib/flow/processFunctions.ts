@@ -1,5 +1,10 @@
 export const PROCESS_FUNCTIONS = [
 	{
+		id: 'sum',
+		label: 'Sum',
+		description: 'Add the numbers together'
+	},
+	{
 		id: 'mean',
 		label: 'Mean',
 		description: 'Average of the numbers'
@@ -74,6 +79,10 @@ export function applyProcess(values: readonly number[], config: ProcessConfig): 
 	assertNumbers(values);
 
 	switch (config.fn) {
+		case 'sum': {
+			assertNonEmpty(values, 'Sum');
+			return { kind: 'scalar', value: values.reduce((total, value) => total + value, 0) };
+		}
 		case 'mean': {
 			assertNonEmpty(values, 'Mean');
 			const total = values.reduce((sum, value) => sum + value, 0);

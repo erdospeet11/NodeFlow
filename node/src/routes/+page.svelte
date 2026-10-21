@@ -1,28 +1,35 @@
 <script lang="ts">
 	import { SvelteFlowProvider, type Edge, type Node } from '@xyflow/svelte';
 	import FlowCanvas from '#lib/flow/FlowCanvas.svelte';
+	import { canvasNodeLabel, buildRunLog } from '../lib/flow/runLog';
+	import { isAbortError, postRun } from '../lib/flow/runClient';
+	import { idleRun, type FlowRunState, type RunSession } from '../lib/flow/runContext';
+	import { toRunRequest } from '../lib/flow/toRunRequest';
 
 	type FlowItem = {
 		id: string;
 		name: string;
 		nodes: Node[];
 		edges: Edge[];
+		run: FlowRunState;
 	};
 
 	let flows = $state<FlowItem[]>([]);
 	let activeFlowId = $state<string | null>(null);
-	let running = $state(false);
-	let debugging = $state(false);
+	let session = $state<RunSession>({ debugging: false });
 	let flowNumber = 1;
+	const controllers = new Map<string, AbortController>();
 
 	const activeFlow = $derived(flows.find((flow) => flow.id === activeFlowId) ?? null);
+	const running = $derived(activeFlow?.run.status === 'running');
 
 	function createFlow() {
 		const flow: FlowItem = {
 			id: crypto.randomUUID(),
 			name: `Flow ${flowNumber++}`,
 			nodes: [],
-			edges: []
+			edges: [],
+			run: idleRun()
 		};
 		flows.push(flow);
 		activeFlowId = flow.id;
@@ -32,16 +39,52 @@
 		activeFlowId = id;
 	}
 
-	function start() {
-		running = true;
+	function active(): FlowItem | null {
+		return flows.find((flow) => flow.id === activeFlowId) ?? null;
+	}
+
+	async function start() {
+		const flow = active();
+		if (!flow || flow.run.status === 'running') return;
+
+		const controller = new AbortController();
+		controllers.set(flow.id, controller);
+		flow.run.status = 'running';
+		flow.run.message = '';
+		flow.run.entries = [];
+		const labels = new Map(flow.nodes.map((node) => [node.id, canvasNodeLabel(node)]));
+
+		try {
+			const request = toRunRequest(flow.nodes, flow.edges);
+			const result = await postRun(request, controller.signal);
+			if (controller.signal.aborted || flow.run.status !== 'running') return;
+			flow.run.entries = buildRunLog(request, result, labels);
+			flow.run.status = result.status;
+			flow.run.message = '';
+		} catch (error) {
+			if (controller.signal.aborted || isAbortError(error) || flow.run.status !== 'running') {
+				if (flow.run.status === 'running') flow.run.status = 'aborted';
+				return;
+			}
+			flow.run.status = 'error';
+			flow.run.message = error instanceof Error ? error.message : 'Run failed';
+			flow.run.entries = [];
+		} finally {
+			if (controllers.get(flow.id) === controller) controllers.delete(flow.id);
+		}
 	}
 
 	function stop() {
-		running = false;
+		const flow = active();
+		if (!flow || flow.run.status !== 'running') return;
+		flow.run.status = 'aborted';
+		flow.run.message = '';
+		flow.run.entries = [];
+		controllers.get(flow.id)?.abort();
 	}
 
 	function toggleDebug() {
-		debugging = !debugging;
+		session.debugging = !session.debugging;
 	}
 </script>
 
@@ -115,10 +158,10 @@
 					</button>
 					<button
 						type="button"
-						class="inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-sm font-medium transition-colors hover:bg-white/8 {debugging
+						class="inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-sm font-medium transition-colors hover:bg-white/8 {session.debugging
 							? 'bg-amber-400/15 text-amber-200'
 							: 'text-[#ececec]'}"
-						aria-pressed={debugging}
+						aria-pressed={session.debugging}
 						onclick={toggleDebug}
 					>
 						<svg viewBox="0 0 24 24" class="size-3.5" fill="none" aria-hidden="true">
@@ -139,7 +182,12 @@
 				{#each flows as flow (flow.id)}
 					{#if flow.id === activeFlowId}
 						<SvelteFlowProvider>
-							<FlowCanvas bind:nodes={flow.nodes} bind:edges={flow.edges} />
+							<FlowCanvas
+								bind:nodes={flow.nodes}
+								bind:edges={flow.edges}
+								run={flow.run}
+								{session}
+							/>
 						</SvelteFlowProvider>
 					{/if}
 				{/each}

@@ -4,6 +4,10 @@ import { applyProcess } from './processFunctions';
 const values = [1, 2, 3, 4];
 
 describe('applyProcess', () => {
+	it('returns the sum', () => {
+		expect(applyProcess(values, { fn: 'sum' })).toEqual({ kind: 'scalar', value: 10 });
+	});
+
 	it('returns the mean', () => {
 		expect(applyProcess(values, { fn: 'mean' })).toEqual({ kind: 'scalar', value: 2.5 });
 	});

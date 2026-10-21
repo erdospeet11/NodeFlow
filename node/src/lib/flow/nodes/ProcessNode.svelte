@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Handle, Position, useSvelteFlow, type Node, type NodeProps } from '@xyflow/svelte';
+	import NodeDebug from '../NodeDebug.svelte';
 	import {
 		MAP_OPS,
 		PROCESS_FUNCTIONS,
@@ -14,8 +15,10 @@
 
 	const { updateNodeData } = useSvelteFlow();
 
-	const fn = $derived<ProcessFunctionId>(isProcessFunctionId(data.fn) ? data.fn : 'mean');
-	const mapOp = $derived<MapOp>(MAP_OPS.some((op) => op.id === data.mapOp) ? data.mapOp : 'multiply');
+	const fn = $derived<ProcessFunctionId>(isProcessFunctionId(data.fn) ? data.fn : 'sum');
+	const mapOp = $derived<MapOp>(
+		MAP_OPS.some((op) => op.id === data.mapOp) ? data.mapOp : 'multiply'
+	);
 	const operand = $derived(Number.isFinite(data.operand) ? data.operand : 1);
 	const mapNeedsOperand = $derived(MAP_OPS.find((op) => op.id === mapOp)?.needsOperand ?? false);
 
@@ -44,7 +47,11 @@
 	<p class="text-[10px] font-medium tracking-wide text-sky-400/90 uppercase">Process</p>
 	<label class="mt-2 block">
 		<span class="sr-only">Function</span>
-		<select class={fieldClass} value={fn} onchange={(event) => selectFunction(event.currentTarget.value)}>
+		<select
+			class={fieldClass}
+			value={fn}
+			onchange={(event) => selectFunction(event.currentTarget.value)}
+		>
 			{#each PROCESS_FUNCTIONS as item (item.id)}
 				<option value={item.id}>{item.label}</option>
 			{/each}
@@ -78,6 +85,17 @@
 		{/if}
 	{/if}
 
-	<Handle type="target" position={Position.Left} class="!size-2.5 !border-[#1a1a1a] !bg-sky-400" />
-	<Handle type="source" position={Position.Right} class="!size-2.5 !border-[#1a1a1a] !bg-sky-400" />
+	<NodeDebug nodeId={id} />
+	<Handle
+		id="in"
+		type="target"
+		position={Position.Left}
+		class="!size-2.5 !border-[#1a1a1a] !bg-sky-400"
+	/>
+	<Handle
+		id="out"
+		type="source"
+		position={Position.Right}
+		class="!size-2.5 !border-[#1a1a1a] !bg-sky-400"
+	/>
 </div>

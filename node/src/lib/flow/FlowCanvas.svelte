@@ -13,18 +13,37 @@
 
 	import { NODE_CATALOG, type NodeCatalogItem } from './nodeCatalog';
 	import { nodeTypes } from './nodes';
+	import { canvasRun } from './canvasRun.svelte';
+	import RunLog from './RunLog.svelte';
+	import type { FlowRunState, RunSession } from './runContext';
 
 	type Props = {
 		nodes?: Node[];
 		edges?: Edge[];
 		colorMode?: ColorMode;
+		run: FlowRunState;
+		session: RunSession;
 	};
 
 	let {
 		nodes = $bindable<Node[]>([]),
 		edges = $bindable<Edge[]>([]),
-		colorMode = 'dark'
+		colorMode = 'dark',
+		run,
+		session
 	}: Props = $props();
+
+	$effect(() => {
+		canvasRun.debugging = session.debugging;
+		canvasRun.entries = run.entries;
+	});
+
+	$effect(() => {
+		return () => {
+			canvasRun.debugging = false;
+			canvasRun.entries = [];
+		};
+	});
 
 	const { screenToFlowPosition } = useSvelteFlow();
 
@@ -44,10 +63,7 @@
 		event.preventDefault();
 		menu = {
 			screen: { x: event.clientX, y: event.clientY },
-			flow: screenToFlowPosition(
-				{ x: event.clientX, y: event.clientY },
-				{ snapToGrid: false }
-			)
+			flow: screenToFlowPosition({ x: event.clientX, y: event.clientY }, { snapToGrid: false })
 		};
 	}
 
@@ -64,8 +80,12 @@
 			position: menu.flow,
 			data:
 				item.type === 'process'
-					? { label: item.label, fn: item.fn ?? 'mean', mapOp: 'multiply', operand: 1 }
-					: { label: item.label }
+					? { label: item.label, fn: item.fn ?? 'sum', mapOp: 'multiply', operand: 1 }
+					: item.type === 'input'
+						? { label: item.label, values: [] }
+						: item.type === 'train'
+							? { label: item.label, userId: 'local', path: 'models/linear.json' }
+							: { label: item.label }
 		};
 
 		nodes = [...nodes, newNode];
@@ -109,6 +129,8 @@
 		<Background />
 		<Controls />
 	</SvelteFlow>
+
+	<RunLog {run} debugging={session.debugging} />
 
 	{#if menu}
 		<div
